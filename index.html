@@ -242,6 +242,25 @@ body.edit .vide .alt{display:none}
 .legend span::before{background:var(--l)}
 
 /* ---------- vue jour par jour ---------- */
+#btnNow{display:none}
+body.view-jour #btnNow{display:inline-block}
+.badge{
+  display:inline-block;margin-left:9px;padding:2px 8px;border-radius:99px;
+  background:var(--accent);color:var(--accent-ink);
+  font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;vertical-align:1px;
+}
+.badge.pale{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+
+tr.now-row th.hour{background:var(--accent-soft)}
+tr.now-row th.hour b{color:var(--accent)}
+td.now-cell .card,td.now-cell .vide{outline:2px solid var(--accent);outline-offset:-2px}
+tr.pause.now-row td{color:var(--accent)}
+
+.day.cible{border-color:var(--accent)}
+.day.cible > h2{color:var(--accent)}
+.row.now-row{background:var(--accent-soft)}
+.row.now-row .t b{color:var(--accent)}
+
 .days{display:none}
 body.view-jour .days{display:block}
 .day{background:var(--card);border:1px solid var(--rule);border-radius:16px;box-shadow:var(--shadow);margin-bottom:11px;overflow:hidden}
@@ -379,6 +398,7 @@ body.edit .addbtn{display:inline-block}
       <button type="button" id="gA" aria-pressed="true">Groupe A</button>
       <button type="button" id="gB" aria-pressed="false">Groupe B</button>
     </div>
+    <button type="button" class="btn" id="btnNow">Aujourd’hui</button>
     <span class="spacer"></span>
     <button type="button" class="btn" id="optBtn" aria-expanded="false" aria-controls="optBody">Options<span class="chev" aria-hidden="true"></span></button>
     <div class="seg mini" role="group" aria-label="Thème">
@@ -388,6 +408,13 @@ body.edit .addbtn{display:inline-block}
   </div>
 
   <div class="panel" id="optBody" hidden>
+    <div class="opt">
+      <span class="txt"><b>Semaine en cours</b><span>À indiquer une fois : l’alternance A / B suit ensuite le calendrier toute seule.</span></span>
+      <div class="seg" role="group" aria-label="Semaine en cours">
+        <button type="button" id="refA" aria-pressed="false">Cette semaine est A</button>
+        <button type="button" id="refB" aria-pressed="false">est B</button>
+      </div>
+    </div>
     <div class="opt">
       <span class="txt"><b>Récapitulatif des enseignements</b><span>Matières, professeurs et volume horaire de la semaine.</span></span>
       <button type="button" class="btn" id="recapBtn" aria-expanded="false">Afficher</button>
@@ -445,6 +472,7 @@ body.edit .addbtn{display:inline-block}
   var KEY = "edt-1st2s1-v2";
   var KEY_THEME = "edt-1st2s1-theme";
   var KEY_GH = "edt-1st2s1-github";
+  var KEY_REF = "edt-1st2s1-semaine-ref";
   var CHEMIN_DEFAUT = "data.js";
   var FAMILLES = {
     stss: "STSS", bph: "Biologie & physiopathologie", sciences: "Physique-chimie",
@@ -473,7 +501,48 @@ body.edit .addbtn{display:inline-block}
   var theme = "clair";
   var editing = false;
   var dirty = false;
-  var aujourdhui = ["", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", ""][new Date().getDay()] || "";
+  var JOURS_SEM = ["", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", ""];
+  var etat = { jour: "", cible: "Lundi", weekend: true, slot: -1, pause: false };
+  var cleEtat = "";
+
+  function minutes(hhmm) {
+    var m = /^(\d{1,2})h(\d{2})$/.exec(String(hhmm || ""));
+    return m ? (+m[1]) * 60 + (+m[2]) : null;
+  }
+  function indexSemaine(d) {
+    var t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    var j = t.getUTCDay() || 7;
+    t.setUTCDate(t.getUTCDate() + 4 - j);          // jeudi de la semaine ISO
+    return Math.floor(t.getTime() / 604800000);
+  }
+  function calculerEtat() {
+    var n = new Date();
+    var jour = JOURS_SEM[n.getDay()] || "";
+    var e = { jour: jour, cible: jour || "Lundi", weekend: !jour, slot: -1, pause: false };
+    if (jour && model) {
+      var min = n.getHours() * 60 + n.getMinutes();
+      for (var i = 0; i < model.creneaux.length; i++) {
+        var d = minutes(model.creneaux[i][0]), f = minutes(model.creneaux[i][1]);
+        if (d !== null && min >= d && min < f) { e.slot = i; break; }
+      }
+      if (e.slot < 0 && model.pause) {
+        var pd = minutes(model.pause.debut), pf = minutes(model.pause.fin);
+        if (pd !== null && min >= pd && min < pf) e.pause = true;
+      }
+    }
+    etat = e;
+    cleEtat = e.jour + "|" + e.slot + "|" + e.pause;
+    return e;
+  }
+  function semaineDuJour() {
+    var ref;
+    try { ref = JSON.parse(window.localStorage.getItem(KEY_REF) || "null"); } catch (err) { ref = null; }
+    if (!ref || (ref.lettre !== "A" && ref.lettre !== "B")) return null;
+    var n = new Date();
+    var decalage = (n.getDay() === 0 || n.getDay() === 6) ? 1 : 0;  // le week-end vise déjà lundi
+    var diff = indexSemaine(n) + decalage - ref.idx;
+    return (((diff % 2) + 2) % 2 === 0) ? ref.lettre : (ref.lettre === "A" ? "B" : "A");
+  }
 
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
   function esc(s) {
@@ -548,26 +617,28 @@ body.edit .addbtn{display:inline-block}
     var d = model, w = d.semaines[week], o = d.semaines[autre()];
     var h = '<table><thead><tr><th scope="col"><span class="j-long">Horaire</span></th>';
     d.jours.forEach(function (j) {
-      h += '<th scope="col"' + (j === aujourdhui ? ' class="now"' : "") + '>' +
+      h += '<th scope="col"' + (j === etat.jour ? ' class="now"' : "") + '>' +
            '<span class="j-long">' + esc(j) + '</span>' +
            '<span class="j-court">' + esc(j.slice(0, 3)) + ".</span></th>";
     });
     h += "</tr></thead><tbody>";
 
     d.creneaux.forEach(function (cr, i) {
-      h += '<tr><th scope="row" class="hour"><b>' + esc(cr[0]) + "</b><i>" + esc(cr[1]) + "</i></th>";
+      h += '<tr' + (etat.slot === i ? ' class="now-row"' : "") +
+           '><th scope="row" class="hour"><b>' + esc(cr[0]) + "</b><i>" + esc(cr[1]) + "</i></th>";
       d.jours.forEach(function (j) {
         var cell = w[j][i];
         if (cell === "SUITE") return;
         var c = cours(cell), aSem = cours(o[j][i]), aGr = cours(cell, autreG());
         var span = spanDe(cell);
-        h += '<td class="cell"' + (span > 1 ? ' rowspan="' + span + '"' : "") + ">" +
+        var ici = j === etat.jour && etat.slot >= i && etat.slot < i + span;
+        h += '<td class="cell' + (ici ? " now-cell" : "") + '"' + (span > 1 ? ' rowspan="' + span + '"' : "") + ">" +
              (c ? cardHTML(c, j, i, !memeCours(c, aSem), !!(cell && cell.gr))
                 : videHTML(j, i, aSem, aGr)) + "</td>";
       });
       h += "</tr>";
       if (i === PAUSE_APRES && d.pause) {
-        h += '<tr class="pause"><th class="hour" scope="row"><b>' + esc(d.pause.debut) + "</b><i>" + esc(d.pause.fin) + "</i></th>" +
+        h += '<tr class="pause' + (etat.pause ? " now-row" : "") + '"><th class="hour" scope="row"><b>' + esc(d.pause.debut) + "</b><i>" + esc(d.pause.fin) + "</i></th>" +
              '<td colspan="' + d.jours.length + '">' + esc(d.pause.libelle) + "</td></tr>";
       }
     });
@@ -579,14 +650,18 @@ body.edit .addbtn{display:inline-block}
   function renderDays() {
     var d = model, w = d.semaines[week], o = d.semaines[autre()], h = "";
     d.jours.forEach(function (j) {
-      h += '<section class="day"><h2' + (j === aujourdhui ? ' class="now"' : "") + ">" + esc(j) + "</h2>";
+      var vise = j === etat.cible;
+      h += '<section class="day' + (vise ? " cible" : "") + '" data-jour="' + esc(j) + '"><h2>' + esc(j) +
+           (vise ? '<span class="badge' + (etat.weekend ? " pale" : "") + '">' +
+                   (etat.weekend ? "prochain jour" : "aujourd’hui") + "</span>" : "") + "</h2>";
       d.creneaux.forEach(function (cr, i) {
         var cell = w[j][i];
         if (cell !== "SUITE") {
           var c = cours(cell), aSem = cours(o[j][i]), aGr = cours(cell, autreG());
           var span = spanDe(cell);
           var fin = span > 1 ? d.creneaux[i + span - 1][1] : cr[1];
-          h += '<div class="row' + (c ? "" : " free") + '">' +
+          var ici = j === etat.jour && etat.slot >= i && etat.slot < i + span;
+          h += '<div class="row' + (c ? "" : " free") + (ici ? " now-row" : "") + '">' +
                  '<div class="t"><b>' + esc(cr[0]) + "</b>" + esc(fin) + "</div>" +
                  '<div class="body">' +
                  (c ? cardHTML(c, j, i, !memeCours(c, aSem), !!(cell && cell.gr))
@@ -594,13 +669,29 @@ body.edit .addbtn{display:inline-block}
                "</div>";
         }
         if (i === PAUSE_APRES && d.pause) {
-          h += '<div class="row midi"><div class="t"><b>' + esc(d.pause.debut) + "</b>" + esc(d.pause.fin) + "</div>" +
+          h += '<div class="row midi' + (j === etat.jour && etat.pause ? " now-row" : "") + '"><div class="t"><b>' + esc(d.pause.debut) + "</b>" + esc(d.pause.fin) + "</div>" +
                '<div class="body">' + esc(d.pause.libelle) + "</div></div>";
         }
       });
       h += "</section>";
     });
     document.getElementById("days").innerHTML = h;
+  }
+
+  function allerAuJour(doux) {
+    var jour = document.querySelector(".day.cible");
+    if (!jour || !window.scrollTo) return;
+    var y = jour.getBoundingClientRect().top + window.scrollY - 12;
+    window.scrollTo({ top: Math.max(0, y), behavior: doux ? "smooth" : "auto" });
+    // Si l'heure en cours tombe hors de l'écran, on la ramène au centre.
+    var ligne = document.querySelector(".day.cible .row.now-row");
+    if (!ligne || !ligne.scrollIntoView) return;
+    setTimeout(function () {
+      var r = ligne.getBoundingClientRect();
+      if (r.top < 8 || r.bottom > window.innerHeight - 8) {
+        ligne.scrollIntoView({ block: "center", behavior: doux ? "smooth" : "auto" });
+      }
+    }, doux ? 420 : 50);
   }
 
   function renderLegend() {
@@ -629,12 +720,17 @@ body.edit .addbtn{display:inline-block}
   }
 
   function render() {
+    calculerEtat();
     renderTable();
     renderDays();
     applyEditable();
+    var enCours = semaineDuJour();
     document.getElementById("meta").innerHTML =
       '<span class="chip' + (groupe === "A" ? "" : " autre") + '">Groupe ' + groupe + "</span>" +
-      esc(model.meta.etablissement) + " · professeur principal " + esc(model.meta.profPrincipal);
+      esc(model.meta.etablissement) + " · professeur principal " + esc(model.meta.profPrincipal) +
+      (enCours ? " · semaine " + enCours + " en cours" : "");
+    document.getElementById("refA").setAttribute("aria-pressed", String(enCours === "A"));
+    document.getElementById("refB").setAttribute("aria-pressed", String(enCours === "B"));
   }
 
   function applyEditable() {
@@ -737,10 +833,26 @@ body.edit .addbtn{display:inline-block}
   document.getElementById("wB").onclick = function () { setWeek("B"); };
   document.getElementById("gA").onclick = function () { setGroupe("A"); };
   document.getElementById("gB").onclick = function () { setGroupe("B"); };
-  document.getElementById("vGrille").onclick = function () { setView("grille"); };
-  document.getElementById("vJour").onclick = function () { setView("jour"); };
+  document.getElementById("vGrille").onclick = function () {
+    setView("grille");
+    if (window.scrollTo) window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  document.getElementById("vJour").onclick = function () { setView("jour"); allerAuJour(true); };
   document.getElementById("tClair").onclick = function () { setTheme("clair"); };
   document.getElementById("tSombre").onclick = function () { setTheme("sombre"); };
+
+  document.getElementById("btnNow").onclick = function () { allerAuJour(true); };
+
+  function fixerSemaine(lettre) {
+    var n = new Date();
+    var decalage = (n.getDay() === 0 || n.getDay() === 6) ? 1 : 0;
+    try {
+      window.localStorage.setItem(KEY_REF, JSON.stringify({ idx: indexSemaine(n) + decalage, lettre: lettre }));
+    } catch (e) {}
+    setWeek(lettre);
+  }
+  document.getElementById("refA").onclick = function () { fixerSemaine("A"); };
+  document.getElementById("refB").onclick = function () { fixerSemaine("B"); };
 
   document.getElementById("optBtn").onclick = function () {
     var body = document.getElementById("optBody");
@@ -917,7 +1029,15 @@ body.edit .addbtn{display:inline-block}
   updateNotice();
   setView(view);
   setGroupe("A");
-  setWeek("A");
+  setWeek(semaineDuJour() || "A");
+  if (view === "jour") setTimeout(function () { allerAuJour(false); }, 60);
+
+  // Les repères « en ce moment » se remettent à l'heure toutes les minutes.
+  setInterval(function () {
+    var avant = cleEtat;
+    calculerEtat();
+    if (cleEtat !== avant && !editing) render();
+  }, 60000);
   }
   window.EDT_DEMARRER = demarrer;
 })();

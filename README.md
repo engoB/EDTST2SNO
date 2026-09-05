@@ -29,6 +29,15 @@ d'abord celui du système, puis votre choix, gardé d'une visite à l'autre.
   libres indiquent ce qui s'y tient l'autre semaine ou pour l'autre groupe.
 - Les créneaux sans cours restent visibles, marqués « Libre », et la pause
   méridienne coupe la journée.
+- La page se cale sur le moment présent : le jour courant est encadré et porte
+  la mention « aujourd'hui », l'heure en cours est surlignée dans les deux vues,
+  et la vue jour par jour s'ouvre directement sur la bonne journée. Le week-end,
+  c'est le lundi qui est visé, sous la mention « prochain jour ». Le bouton
+  **Aujourd'hui** y ramène à tout moment, et les repères se remettent à l'heure
+  chaque minute.
+- **Options › Semaine en cours** : indiquez une fois si la semaine qui commence
+  est A ou B. La page ouvre ensuite d'elle-même la bonne semaine, en suivant
+  l'alternance du calendrier, et l'indique à côté du titre.
 - Le bouton **Options**, à droite de la barre, déplie le récapitulatif des
   enseignements, le mode modification, la publication sur GitHub, le
   téléchargement, l'impression et la légende des couleurs.
