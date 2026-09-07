@@ -13,34 +13,39 @@ edt-1st2s1/
 
 ## Consulter
 
-Ouvrir `index.html` dans un navigateur, directement depuis le dossier.
-Rien à installer.
+Ouvrir `index.html` dans un navigateur. Rien à installer.
 
-Quatre sélecteurs en haut de page : **semaine A / B**, **semaine entière /
-jour par jour**, **groupe A / B** et **thème clair / sombre**. Le thème suit
-d'abord celui du système, puis votre choix, gardé d'une visite à l'autre.
+La page suit le calendrier réel : chaque jour porte sa date, les flèches ‹ ›
+passent d'une semaine à l'autre, **Aujourd'hui** revient à la semaine en cours.
+L'alternance A / B se déduit du calendrier une fois la semaine de référence
+indiquée dans les options.
 
-- Sur ordinateur, la semaine entière tient dans l'écran : ni défilement
-  horizontal, ni vertical. Sur téléphone, la grille tient dans la largeur, les
-  intitulés passent en abrégé (BPH, Maths, EMC…) et la vue jour par jour reste
-  le confort de lecture.
-- Un cours qui ne revient qu'une semaine sur deux porte le repère « sem. A »
-  ou « sem. B » ; un cours dédoublé porte « gr. A » ou « gr. B ». Les cases
-  libres indiquent ce qui s'y tient l'autre semaine ou pour l'autre groupe.
-- Les créneaux sans cours restent visibles, marqués « Libre », et la pause
-  méridienne coupe la journée.
-- La page se cale sur le moment présent : le jour courant est encadré et porte
-  la mention « aujourd'hui », l'heure en cours est surlignée dans les deux vues,
-  et la vue jour par jour s'ouvre directement sur la bonne journée. Le week-end,
-  c'est le lundi qui est visé, sous la mention « prochain jour ». Le bouton
-  **Aujourd'hui** y ramène à tout moment, et les repères se remettent à l'heure
-  chaque minute.
-- **Options › Semaine en cours** : indiquez une fois si la semaine qui commence
-  est A ou B. La page ouvre ensuite d'elle-même la bonne semaine, en suivant
-  l'alternance du calendrier, et l'indique à côté du titre.
-- Le bouton **Options**, à droite de la barre, déplie le récapitulatif des
-  enseignements, le mode modification, la publication sur GitHub, le
-  téléchargement, l'impression et la légende des couleurs.
+- **Bandeau du moment**, en haut : le cours en cours avec l'heure de fin et une
+  barre de progression, puis le cours suivant. Hors cours : le prochain cours et
+  dans combien de temps, ou « journée terminée » avec le lendemain. Le créneau
+  du moment est aussi surligné dans la grille et dans la vue jour.
+- **Vacances et jours fériés** (zone A, académie de Bordeaux) : les journées
+  concernées apparaissent grisées avec leur libellé, et le bandeau annonce la
+  date de reprise.
+- **Affaires**, dans la barre : ce qu'il faut préparer pour le prochain jour de
+  classe, matière par matière, avec le nombre d'affaires en pastille. La liste
+  par matière se modifie depuis le même panneau.
+- **Semaine entière / jour par jour**, **groupe A / B**, et un thème
+  **auto / clair / sombre** — « auto » suit le réglage du téléphone ou de
+  l'ordinateur et bascule en direct.
+- Sur ordinateur, la semaine entière tient dans l'écran, sans défilement. Sur
+  téléphone, la grille tient dans la largeur, les intitulés passent en abrégé.
+- Un cours d'une semaine sur deux porte le repère « sem. A / B », un cours
+  dédoublé « gr. A / B ». Les cases libres indiquent ce qui s'y tient l'autre
+  semaine ou pour l'autre groupe.
+
+## Changements ponctuels
+
+**Options › Changements ponctuels** enregistre, à une date précise, un cours
+annulé, un cours remplacé (autre matière, autre salle) ou un cours ajouté. La
+grille de base n'est pas touchée : seule la date concernée change, et la case
+porte alors la mention « annulé », « remplacé » ou « ajouté ». Ces changements
+sont publiés avec le reste et se retirent d'un clic.
 
 ## Corriger
 
