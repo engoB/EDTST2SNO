@@ -25,6 +25,8 @@
   --accent-soft:#e2eff3;
   --shadow:0 1px 1px rgba(14,23,32,.03), 0 12px 30px -18px rgba(14,23,32,.28);
   --band:#f0f3f6;
+  --halo-1:rgba(13,92,115,.20);
+  --halo-2:rgba(13,92,115,.34);
   --alerte:#b4432b;
 
   --stss-l:#7139a8;   --stss-t:#ebdff6;   --stss-f:#4b2570;
@@ -53,6 +55,8 @@ body.dark{
   --accent-soft:#12303a;
   --shadow:0 1px 1px rgba(0,0,0,.4), 0 14px 34px -20px rgba(0,0,0,.9);
   --band:#151d25;
+  --halo-1:rgba(89,185,211,.24);
+  --halo-2:rgba(89,185,211,.44);
   --alerte:#f08d72;
 
   --stss-l:#9268c9;   --stss-t:#1b1725;   --stss-f:#cbb0ea;
@@ -142,7 +146,17 @@ h1 .cl{color:var(--accent)}
 .moment .det{font-size:12.5px;color:var(--ink-soft);margin-top:2px}
 .moment .suite{padding-left:18px;border-left:1px solid var(--rule)}
 .moment .suite .titre{font-size:13px;font-weight:650;color:var(--ink-soft)}
-.moment .barre{position:absolute;left:0;bottom:0;height:3px;background:var(--accent);opacity:.55}
+.moment .barre{position:absolute;left:0;bottom:0;height:3px;background:var(--accent);opacity:.55;transition:width 1s linear}
+.moment .reste{margin-left:auto;text-align:right;padding-left:18px;white-space:nowrap}
+.moment .reste b{
+  display:block;font-size:26px;font-weight:750;letter-spacing:-.035em;color:var(--accent);
+  font-variant-numeric:tabular-nums;line-height:1;
+}
+.moment.repos .reste b{color:var(--ink)}
+.moment .reste span{
+  display:block;margin-top:4px;font-size:9.5px;font-weight:800;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--ink-faint);
+}
 .point{
   display:inline-block;width:7px;height:7px;border-radius:99px;background:var(--accent);margin-right:7px;
   vertical-align:1px;animation:pouls 2.4s ease-in-out infinite;
@@ -237,7 +251,18 @@ tr.pause.now-row td{color:var(--accent)}
 
 .cell{padding:4px;position:relative}
 td.now-cell{background:var(--accent-soft)}
-td.now-cell .card,td.now-cell .vide{outline:2px solid var(--accent);outline-offset:-1px;box-shadow:0 0 0 4px var(--accent-soft)}
+td.now-cell .card,td.now-cell .vide,.row.now-row .card,.row.now-row .vide{
+  outline:2px solid var(--accent);outline-offset:-1px;animation:halo 3.4s ease-in-out infinite;
+}
+@keyframes halo{
+  0%,100%{box-shadow:0 0 0 2px var(--halo-1), 0 0 9px 1px var(--halo-1)}
+  50%{box-shadow:0 0 0 6px var(--halo-2), 0 0 22px 6px var(--halo-2)}
+}
+@media (prefers-reduced-motion:reduce){
+  td.now-cell .card,td.now-cell .vide,.row.now-row .card,.row.now-row .vide{
+    animation:none;box-shadow:0 0 0 4px var(--halo-2);
+  }
+}
 
 .card{
   height:100%;border-radius:8px;padding:9px 11px;position:relative;overflow:hidden;
@@ -276,7 +301,7 @@ td.now-cell .card,td.now-cell .vide{outline:2px solid var(--accent);outline-offs
 .card.annule .m{color:var(--ink-faint);text-decoration:line-through}
 .card.annule .p,.card.annule .s{color:var(--ink-faint)}
 .card .prog{position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--rule)}
-.card .prog i{display:block;height:100%;background:var(--accent)}
+.card .prog i{display:block;height:100%;background:var(--accent);transition:width 1s linear}
 .maintenant{
   position:absolute;top:7px;left:11px;font-size:8.5px;font-weight:800;letter-spacing:.12em;
   text-transform:uppercase;color:var(--accent);
@@ -417,6 +442,8 @@ body.edit .addbtn{display:inline-block}
   tbody th.hour b{font-size:10.5px}
   tbody th.hour i{font-size:9px}
   .moment .suite{padding-left:0;border-left:0}
+  .moment .reste{padding-left:0}
+  .moment .reste b{font-size:21px}
   body.view-grille .grid{flex:0 0 auto}
   body.view-grille table{height:auto}
   body.view-grille tbody td{height:66px}
@@ -615,7 +642,7 @@ body.edit .addbtn{display:inline-block}
   var view = window.innerWidth > 760 ? "grille" : "jour";
   var theme = "auto";
   var editing = false, dirty = false;
-  var etat = null, cleEtat = "";
+  var etat = null, cleEtat = "", phaseMoment = "", texteData = null;
 
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
   function esc(s) {
@@ -724,7 +751,9 @@ body.edit .addbtn{display:inline-block}
     var jsem = n.getDay();
     var e = {
       date: d, iso: iso(d), jour: (jsem >= 1 && jsem <= 5) ? model.jours[jsem - 1] : "",
-      min: n.getHours() * 60 + n.getMinutes(), slot: -1, pause: false, off: null
+      min: n.getHours() * 60 + n.getMinutes(),
+      sec: n.getHours() * 3600 + n.getMinutes() * 60 + n.getSeconds(),
+      slot: -1, pause: false, off: null
     };
     e.off = (e.jour ? jourOff(d) : null);
     if (e.jour && !e.off) {
@@ -755,7 +784,11 @@ body.edit .addbtn{display:inline-block}
     try { window.localStorage.setItem(KEY, JSON.stringify(model)); } catch (e) {}
     updateNotice();
   }
-  function updateNotice() { document.getElementById("notice").classList.toggle("show", dirty); }
+  function updateNotice() {
+    var n = document.getElementById("notice");
+    if (dirty) n.querySelector("span").textContent = "Modifications enregistrées sur cet appareil, pas encore publiées.";
+    n.classList.toggle("show", dirty);
+  }
 
   /* ---------- rendu des cases ---------- */
   function cardHTML(c, day, slot, seulSem, seulGr, statut, prog) {
@@ -903,67 +936,135 @@ body.edit .addbtn{display:inline-block}
     }
     return liste;
   }
-  function renderMoment() {
-    var el = document.getElementById("moment");
-    var lab, titre, det, suite = "", repos = false, prog = null;
-
+  function fmtDuree(sec) {
+    if (sec <= 0) return "—";
+    if (sec < 60) return "moins d’1 min";
+    var m = Math.round(sec / 60);
+    if (m < 60) return m + " min";
+    var h = Math.floor(m / 60), r = m % 60;
+    return h + " h" + (r ? " " + (r < 10 ? "0" : "") + r : "");
+  }
+  // Décrit l'instant présent : phase, textes, compte à rebours, progression.
+  function calculMoment() {
+    var M = { phase: "", lab: "", titre: "", det: "", suite: "", repos: false,
+              finSec: null, legende: "", debutSec: null };
     if (etat.off) {
-      repos = true;
-      lab = etat.off.type === "ferie" ? "jour férié" : "vacances";
-      titre = etat.off.nom;
-      var reprise = prochainJourClasse(etat.date);
-      det = reprise ? "Reprise le " + model.jours[(reprise.getDay() || 7) - 1].toLowerCase() + " " + fmtLong(reprise) : "";
-    } else if (!etat.jour) {
-      repos = true;
-      lab = "week-end";
-      titre = "Pas de cours aujourd’hui";
+      M.phase = "off:" + etat.off.nom;
+      M.repos = true;
+      M.lab = etat.off.type === "ferie" ? "jour férié" : "vacances";
+      M.titre = etat.off.nom;
+      var rep = prochainJourClasse(etat.date);
+      M.det = rep ? "Reprise le " + model.jours[(rep.getDay() || 7) - 1].toLowerCase() + " " + fmtLong(rep) : "";
+      return M;
+    }
+    if (!etat.jour) {
+      M.phase = "weekend";
+      M.repos = true;
+      M.lab = "week-end";
+      M.titre = "Pas de cours aujourd’hui";
       var l = prochainJourClasse(etat.date), c0 = l ? coursDuJour(l)[0] : null;
-      det = l ? ("Reprise " + model.jours[(l.getDay() || 7) - 1].toLowerCase() + " " + fmtLong(l) +
-                 (c0 ? " à " + model.creneaux[c0.i][0] : "")) : "";
-      if (c0) suite = '<span class="lab">premier cours</span><div class="titre">' + esc(c0.c.m) + "</div>" +
-                      '<div class="det">' + esc([c0.c.p, c0.c.s].filter(Boolean).join(" · ")) + "</div>";
-    } else {
-      var liste = coursDuJour(etat.date);
-      var actuel = null, prochain = null, k;
-      for (k = 0; k < liste.length; k++) {
-        var debut = minutes(model.creneaux[liste[k].i][0]);
-        if (etat.slot >= liste[k].i && etat.slot < liste[k].i + liste[k].span) actuel = liste[k];
-        else if (debut > etat.min && !prochain) prochain = liste[k];
-      }
-      if (actuel) {
-        lab = '<span class="point"></span>en ce moment';
-        titre = actuel.c.m;
-        det = [actuel.c.p, actuel.c.s].filter(Boolean).join(" · ") +
-              " · jusqu’à " + model.creneaux[actuel.i + actuel.span - 1][1];
-        prog = progression(etat.slot);
-      } else if (prochain) {
-        repos = true;
-        lab = "prochain cours";
-        var dans = minutes(model.creneaux[prochain.i][0]) - etat.min;
-        titre = prochain.c.m;
-        det = [prochain.c.p, prochain.c.s].filter(Boolean).join(" · ") +
-              " · à " + model.creneaux[prochain.i][0] + (dans > 0 && dans < 120 ? " (dans " + dans + " min)" : "");
-      } else {
-        repos = true;
-        lab = "journée terminée";
-        titre = liste.length ? "Plus de cours aujourd’hui" : "Pas de cours aujourd’hui";
-        var suiv = prochainJourClasse(etat.date), c1 = suiv ? coursDuJour(suiv)[0] : null;
-        det = suiv ? (model.jours[(suiv.getDay() || 7) - 1] + " " + fmtLong(suiv) +
-                      (c1 ? " · " + model.creneaux[c1.i][0] + " " + c1.c.m : "")) : "";
-      }
-      if (actuel && prochain) {
-        suite = '<span class="lab">ensuite</span><div class="titre">' + esc(prochain.c.m) + "</div>" +
-                '<div class="det">' + esc(model.creneaux[prochain.i][0] + " · " +
-                [prochain.c.p, prochain.c.s].filter(Boolean).join(" · ")) + "</div>";
-      }
+      M.det = l ? ("Reprise " + model.jours[(l.getDay() || 7) - 1].toLowerCase() + " " + fmtLong(l) +
+                   (c0 ? " à " + model.creneaux[c0.i][0] : "")) : "";
+      if (c0) M.suite = '<span class="lab">premier cours</span><div class="titre">' + esc(c0.c.m) + "</div>" +
+                        '<div class="det">' + esc([c0.c.p, c0.c.s].filter(Boolean).join(" · ")) + "</div>";
+      return M;
     }
 
-    el.className = "moment" + (repos ? " repos" : "");
+    var liste = coursDuJour(etat.date), actuel = null, prochain = null, k;
+    for (k = 0; k < liste.length; k++) {
+      var debut = minutes(model.creneaux[liste[k].i][0]);
+      if (etat.slot >= liste[k].i && etat.slot < liste[k].i + liste[k].span) actuel = liste[k];
+      else if (debut > etat.min && !prochain) prochain = liste[k];
+    }
+
+    if (actuel) {
+      M.phase = "cours:" + actuel.i;
+      M.lab = '<span class="point"></span>en ce moment';
+      M.titre = actuel.c.m;
+      M.det = [actuel.c.p, actuel.c.s].filter(Boolean).join(" · ") +
+              " · jusqu’à " + model.creneaux[actuel.i + actuel.span - 1][1];
+      M.debutSec = minutes(model.creneaux[actuel.i][0]) * 60;
+      M.finSec = minutes(model.creneaux[actuel.i + actuel.span - 1][1]) * 60;
+      M.legende = "avant la fin";
+      if (prochain) {
+        M.suite = '<span class="lab">ensuite</span><div class="titre">' + esc(prochain.c.m) + "</div>" +
+                  '<div class="det">' + esc(model.creneaux[prochain.i][0] + " · " +
+                  [prochain.c.p, prochain.c.s].filter(Boolean).join(" · ")) + "</div>";
+      }
+      return M;
+    }
+
+    if (etat.pause) {
+      M.phase = "pause";
+      M.repos = true;
+      M.lab = "pause méridienne";
+      M.debutSec = minutes(model.pause.debut) * 60;
+      M.finSec = minutes(model.pause.fin) * 60;
+      M.legende = "avant la reprise";
+      if (prochain) {
+        M.titre = "Reprise à " + model.creneaux[prochain.i][0] + " — " + prochain.c.m;
+        M.det = [prochain.c.p, prochain.c.s].filter(Boolean).join(" · ");
+      } else {
+        M.titre = "Pause jusqu’à " + model.pause.fin;
+        M.det = "Plus de cours ensuite aujourd’hui";
+      }
+      return M;
+    }
+
+    if (prochain) {
+      M.phase = "avant:" + prochain.i;
+      M.repos = true;
+      M.lab = "prochain cours";
+      M.titre = prochain.c.m;
+      M.det = [prochain.c.p, prochain.c.s].filter(Boolean).join(" · ") +
+              " · à " + model.creneaux[prochain.i][0];
+      M.finSec = minutes(model.creneaux[prochain.i][0]) * 60;
+      M.legende = "avant le cours";
+      return M;
+    }
+
+    M.phase = "fini";
+    M.repos = true;
+    M.lab = "journée terminée";
+    M.titre = liste.length ? "Plus de cours aujourd’hui" : "Pas de cours aujourd’hui";
+    var suiv = prochainJourClasse(etat.date), c1 = suiv ? coursDuJour(suiv)[0] : null;
+    M.det = suiv ? (model.jours[(suiv.getDay() || 7) - 1] + " " + fmtLong(suiv) +
+                    (c1 ? " · " + model.creneaux[c1.i][0] + " " + c1.c.m : "")) : "";
+    return M;
+  }
+
+  function peindreMoment(M) {
+    var el = document.getElementById("moment");
+    el.className = "moment" + (M.repos ? " repos" : "");
     el.innerHTML =
-      '<div class="bloc"><span class="lab">' + lab + '</span><div class="titre">' + esc(titre) + "</div>" +
-      (det ? '<div class="det">' + esc(det) + "</div>" : "") + "</div>" +
-      (suite ? '<div class="bloc suite">' + suite + "</div>" : "") +
-      (prog !== null ? '<div class="barre" style="width:' + prog + '%"></div>' : "");
+      '<div class="bloc"><span class="lab">' + M.lab + '</span><div class="titre">' + esc(M.titre) + "</div>" +
+      (M.det ? '<div class="det">' + esc(M.det) + "</div>" : "") + "</div>" +
+      (M.suite ? '<div class="bloc suite">' + M.suite + "</div>" : "") +
+      (M.finSec !== null ? '<div class="reste"><b id="momReste"></b><span>' + esc(M.legende) + "</span></div>" : "") +
+      (M.debutSec !== null ? '<div class="barre" id="momBarre"></div>' : "");
+    phaseMoment = M.phase;
+    majCompteur(M);
+  }
+
+  // Mise à jour à la seconde, sans reconstruire la page.
+  function majCompteur(M) {
+    var r = document.getElementById("momReste");
+    if (r && M.finSec !== null) r.textContent = fmtDuree(M.finSec - etat.sec);
+    var pct = null;
+    if (M.debutSec !== null && M.finSec !== null && M.finSec > M.debutSec) {
+      pct = Math.max(0, Math.min(100, (etat.sec - M.debutSec) / (M.finSec - M.debutSec) * 100));
+    }
+    var b = document.getElementById("momBarre");
+    if (b && pct !== null) b.style.width = pct.toFixed(2) + "%";
+    var restant = M.finSec !== null ? fmtDuree(M.finSec - etat.sec) : "";
+    var marques = document.querySelectorAll(".maintenant");
+    for (var i = 0; i < marques.length; i++) {
+      marques[i].textContent = "en ce moment" + (restant && M.phase.indexOf("cours:") === 0 ? " · " + restant : "");
+    }
+    if (pct !== null) {
+      var barres = document.querySelectorAll(".card .prog i");
+      for (var k = 0; k < barres.length; k++) barres[k].style.width = pct.toFixed(2) + "%";
+    }
   }
 
   /* ---------- affaires ---------- */
@@ -1072,7 +1173,7 @@ body.edit .addbtn{display:inline-block}
     calculerEtat();
     renderTable();
     renderDays();
-    renderMoment();
+    peindreMoment(calculMoment());
     renderKit();
     applyEditable();
 
@@ -1096,6 +1197,51 @@ body.edit .addbtn{display:inline-block}
       else n[i].removeAttribute("contenteditable");
     }
   }
+  // Bat chaque seconde : recalcule l'instant, ne redessine que ce qui change.
+  function battre() {
+    var avant = cleEtat;
+    calculerEtat();
+    if (cleEtat !== avant) {
+      if (!editing) { render(); return; }
+      return;
+    }
+    var M = calculMoment();
+    if (M.phase !== phaseMoment) peindreMoment(M);
+    else majCompteur(M);
+  }
+
+  // Recharge data.js en arrière-plan : une publication faite ailleurs arrive
+  // sans qu'il y ait à recharger la page.
+  function verifierMaj() {
+    if (!window.EDT_URL || editing) return;
+    fetch(window.EDT_URL + "?v=" + Date.now(), { cache: "no-store" })
+      .then(function (r) { return r.ok ? r.text() : null; })
+      .then(function (t) {
+        if (!t) return;
+        if (texteData === null) { texteData = t; return; }
+        if (t === texteData) return;
+        texteData = t;
+        var faux = {};
+        try { new Function("window", t)(faux); } catch (e) { return; }
+        if (!faux.EDT_DATA || !faux.EDT_DATA.semaines) return;
+        SOURCE = faux.EDT_DATA;
+        if (dirty) { signal("Une nouvelle version est en ligne. Publiez ou annulez vos modifications pour la recevoir."); return; }
+        model = clone(SOURCE);
+        model.exceptions = model.exceptions || {};
+        model.affaires = model.affaires || {};
+        render();
+        signal("Emploi du temps mis à jour depuis le dépôt.");
+      })
+      .catch(function () {});
+  }
+  function signal(txt) {
+    var n = document.getElementById("notice");
+    n.querySelector("span").textContent = txt;
+    n.classList.add("show");
+    clearTimeout(signal.t);
+    signal.t = setTimeout(function () { if (!dirty) n.classList.remove("show"); }, 8000);
+  }
+
   function allerAuJour(doux) {
     var jour = document.querySelector(".day.cible");
     if (!jour || !window.scrollTo) return;
@@ -1432,11 +1578,14 @@ body.edit .addbtn{display:inline-block}
     setGroupe("A");
     if (view === "jour") setTimeout(function () { allerAuJour(false); }, 60);
 
-    setInterval(function () {
-      var avant = cleEtat;
-      calculerEtat();
-      if (cleEtat !== avant && !editing) render();
-    }, 60000);
+    battre();
+    setInterval(battre, 1000);
+    document.addEventListener("visibilitychange", function () {
+      if (!document.hidden) { battre(); verifierMaj(); }
+    });
+    window.addEventListener("focus", function () { battre(); verifierMaj(); });
+    setInterval(verifierMaj, 60000);
+    verifierMaj();
   }
   window.EDT_DEMARRER = demarrer;
 })();
@@ -1446,8 +1595,9 @@ body.edit .addbtn{display:inline-block}
 // data.js est chargé avec un paramètre unique : la page publiée sur GitHub Pages
 // affiche la dernière version sans avoir à vider le cache du navigateur.
 (function () {
+  window.EDT_URL = "data.js";
   var s = document.createElement("script");
-  s.src = "data.js?v=" + Date.now();
+  s.src = window.EDT_URL + "?v=" + Date.now();
   s.onload = function () { window.EDT_DEMARRER(); };
   s.onerror = function () {
     document.getElementById("meta").textContent = "data.js est introuvable à côté de cette page.";

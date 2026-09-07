@@ -20,10 +20,17 @@ passent d'une semaine à l'autre, **Aujourd'hui** revient à la semaine en cours
 L'alternance A / B se déduit du calendrier une fois la semaine de référence
 indiquée dans les options.
 
-- **Bandeau du moment**, en haut : le cours en cours avec l'heure de fin et une
-  barre de progression, puis le cours suivant. Hors cours : le prochain cours et
-  dans combien de temps, ou « journée terminée » avec le lendemain. Le créneau
-  du moment est aussi surligné dans la grille et dans la vue jour.
+- **Bandeau du moment**, en haut : le cours en cours, le suivant, et surtout le
+  **temps restant** en gros à droite — avant la fin du cours, avant la reprise
+  pendant la pause méridienne, ou avant le prochain cours pendant une
+  récréation. Le compte à rebours et les barres de progression se mettent à jour
+  chaque seconde, sans recharger la page.
+- Le créneau du moment est entouré d'un **halo qui scintille doucement**, dans la
+  grille comme dans la vue jour, et la case rappelle le temps restant.
+- La page **surveille le dépôt** : une publication faite depuis un autre
+  appareil arrive d'elle-même en moins d'une minute, et au retour sur l'onglet.
+  Un bandeau le signale. Si des modifications locales ne sont pas publiées, rien
+  n'est écrasé : la page prévient et attend.
 - **Vacances et jours fériés** (zone A, académie de Bordeaux) : les journées
   concernées apparaissent grisées avec leur libellé, et le bandeau annonce la
   date de reprise.
