@@ -617,6 +617,7 @@ body.edit .addbtn{display:inline-block}
   var KEY_THEME = "edt-1st2s1-theme";
   var KEY_GH = "edt-1st2s1-github";
   var KEY_REF = "edt-1st2s1-semaine-ref";
+  var KEY_GROUPE = "edt-1st2s1-groupe";
   var CHEMIN_DEFAUT = "data.js";
   var FAMILLES = {
     stss: "STSS", bph: "Biologie & physiopathologie", sciences: "Physique-chimie",
@@ -662,6 +663,10 @@ body.edit .addbtn{display:inline-block}
     var j = t.getUTCDay() || 7;
     t.setUTCDate(t.getUTCDate() + 4 - j);
     return Math.floor(t.getTime() / 604800000);
+  }
+  function tsDe(d, min) {
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate(),
+                    Math.floor(min / 60), min % 60, 0, 0).getTime();
   }
   function minutes(hhmm) {
     var m = /^(\d{1,2})h(\d{2})$/.exec(String(hhmm || ""));
@@ -766,9 +771,25 @@ body.edit .addbtn{display:inline-block}
         if (pa !== null && e.min >= pa && e.min < pb) e.pause = true;
       }
     }
+    e.cible = jourVise(e);
     etat = e;
-    cleEtat = e.iso + "|" + e.slot + "|" + e.pause;
+    cleEtat = e.iso + "|" + e.slot + "|" + e.pause + "|" + iso(e.cible.date);
     return e;
+  }
+  // Journée à mettre en avant : aujourd'hui tant qu'il reste cours, sinon la suivante.
+  function jourVise(e) {
+    var fini = true;
+    if (e.jour && !e.off) {
+      var liste = coursDuJour(e.date);
+      for (var k = 0; k < liste.length; k++) {
+        var fin = minutes(model.creneaux[liste[k].i + liste[k].span - 1][1]);
+        if (e.min < fin) { fini = false; break; }
+      }
+    }
+    if (!fini) return { date: e.date, tag: "aujourd’hui", auj: true };
+    var suiv = prochainJourClasse(e.date);
+    return suiv ? { date: suiv, tag: "prochaine journée", auj: false }
+                : { date: e.date, tag: "", auj: true };
   }
   function semaineAffichee() { return lundi && iso(lundi) === iso(lundiDe(new Date())); }
 
@@ -888,10 +909,11 @@ body.edit .addbtn{display:inline-block}
     d.jours.forEach(function (j, k) {
       var date = dateDuJour(k), off = jourOff(date);
       var estAuj = etat && etat.jour === j && semaineAffichee();
-      var cible = estAuj || (!etat.jour && k === 0);
+      var cible = etat && etat.cible.tag && iso(date) === iso(etat.cible.date);
       h += '<section class="day' + (cible ? " cible" : "") + (off ? " off" : "") + '" data-jour="' + esc(j) + '">' +
            "<h2>" + esc(j) + " " + esc(fmtLong(date)) +
-           (estAuj ? '<span class="badge">aujourd’hui</span>' : "") + "</h2>";
+           (cible ? '<span class="badge' + (etat.cible.auj ? "" : " pale") + '">' + esc(etat.cible.tag) + "</span>" : "") +
+           (estAuj && !cible ? '<span class="badge pale">aujourd’hui</span>' : "") + "</h2>";
       if (off) {
         h += '<p class="jour-off">' + esc(off.nom) + "</p></section>";
         return;
@@ -941,13 +963,18 @@ body.edit .addbtn{display:inline-block}
     if (sec < 60) return "moins d’1 min";
     var m = Math.round(sec / 60);
     if (m < 60) return m + " min";
-    var h = Math.floor(m / 60), r = m % 60;
-    return h + " h" + (r ? " " + (r < 10 ? "0" : "") + r : "");
+    if (m < 24 * 60) {
+      var h = Math.floor(m / 60), r = m % 60;
+      return h + " h" + (r ? " " + (r < 10 ? "0" : "") + r : "");
+    }
+    var j = Math.floor(m / (24 * 60)), hr = Math.round((m % (24 * 60)) / 60);
+    if (hr === 24) { j += 1; hr = 0; }
+    return j + " j" + (hr ? " " + hr + " h" : "");
   }
   // Décrit l'instant présent : phase, textes, compte à rebours, progression.
   function calculMoment() {
     var M = { phase: "", lab: "", titre: "", det: "", suite: "", repos: false,
-              finSec: null, legende: "", debutSec: null };
+              cibleTs: null, debutTs: null, legende: "" };
     if (etat.off) {
       M.phase = "off:" + etat.off.nom;
       M.repos = true;
@@ -955,6 +982,11 @@ body.edit .addbtn{display:inline-block}
       M.titre = etat.off.nom;
       var rep = prochainJourClasse(etat.date);
       M.det = rep ? "Reprise le " + model.jours[(rep.getDay() || 7) - 1].toLowerCase() + " " + fmtLong(rep) : "";
+      var cr = rep ? coursDuJour(rep)[0] : null;
+      if (cr) {
+        M.cibleTs = tsDe(rep, minutes(model.creneaux[cr.i][0]));
+        M.legende = "avant le premier cours";
+      }
       return M;
     }
     if (!etat.jour) {
@@ -965,8 +997,13 @@ body.edit .addbtn{display:inline-block}
       var l = prochainJourClasse(etat.date), c0 = l ? coursDuJour(l)[0] : null;
       M.det = l ? ("Reprise " + model.jours[(l.getDay() || 7) - 1].toLowerCase() + " " + fmtLong(l) +
                    (c0 ? " à " + model.creneaux[c0.i][0] : "")) : "";
-      if (c0) M.suite = '<span class="lab">premier cours</span><div class="titre">' + esc(c0.c.m) + "</div>" +
-                        '<div class="det">' + esc([c0.c.p, c0.c.s].filter(Boolean).join(" · ")) + "</div>";
+      if (c0) {
+        M.suite = '<span class="lab">premier cours</span><div class="titre">' + esc(c0.c.m) + "</div>" +
+                  '<div class="det">' + esc(model.creneaux[c0.i][0] + " · " +
+                  [c0.c.p, c0.c.s].filter(Boolean).join(" · ")) + "</div>";
+        M.cibleTs = tsDe(l, minutes(model.creneaux[c0.i][0]));
+        M.legende = "avant le premier cours";
+      }
       return M;
     }
 
@@ -983,8 +1020,8 @@ body.edit .addbtn{display:inline-block}
       M.titre = actuel.c.m;
       M.det = [actuel.c.p, actuel.c.s].filter(Boolean).join(" · ") +
               " · jusqu’à " + model.creneaux[actuel.i + actuel.span - 1][1];
-      M.debutSec = minutes(model.creneaux[actuel.i][0]) * 60;
-      M.finSec = minutes(model.creneaux[actuel.i + actuel.span - 1][1]) * 60;
+      M.debutTs = tsDe(etat.date, minutes(model.creneaux[actuel.i][0]));
+      M.cibleTs = tsDe(etat.date, minutes(model.creneaux[actuel.i + actuel.span - 1][1]));
       M.legende = "avant la fin";
       if (prochain) {
         M.suite = '<span class="lab">ensuite</span><div class="titre">' + esc(prochain.c.m) + "</div>" +
@@ -998,8 +1035,8 @@ body.edit .addbtn{display:inline-block}
       M.phase = "pause";
       M.repos = true;
       M.lab = "pause méridienne";
-      M.debutSec = minutes(model.pause.debut) * 60;
-      M.finSec = minutes(model.pause.fin) * 60;
+      M.debutTs = tsDe(etat.date, minutes(model.pause.debut));
+      M.cibleTs = tsDe(etat.date, minutes(model.pause.fin));
       M.legende = "avant la reprise";
       if (prochain) {
         M.titre = "Reprise à " + model.creneaux[prochain.i][0] + " — " + prochain.c.m;
@@ -1018,18 +1055,37 @@ body.edit .addbtn{display:inline-block}
       M.titre = prochain.c.m;
       M.det = [prochain.c.p, prochain.c.s].filter(Boolean).join(" · ") +
               " · à " + model.creneaux[prochain.i][0];
-      M.finSec = minutes(model.creneaux[prochain.i][0]) * 60;
+      M.cibleTs = tsDe(etat.date, minutes(model.creneaux[prochain.i][0]));
       M.legende = "avant le cours";
       return M;
     }
 
-    M.phase = "fini";
+    var suiv = prochainJourClasse(etat.date);
+    var suite2 = suiv ? coursDuJour(suiv) : [];
+    var c1 = suite2[0];
+    M.phase = "fini:" + (suiv ? iso(suiv) : "");
     M.repos = true;
+    if (!suiv) {
+      M.lab = "journée terminée";
+      M.titre = "Plus de cours à venir";
+      return M;
+    }
+    var nomJour = model.jours[(suiv.getDay() || 7) - 1];
+    var demain = iso(suiv) === iso(plusJours(etat.date, 1));
     M.lab = "journée terminée";
     M.titre = liste.length ? "Plus de cours aujourd’hui" : "Pas de cours aujourd’hui";
-    var suiv = prochainJourClasse(etat.date), c1 = suiv ? coursDuJour(suiv)[0] : null;
-    M.det = suiv ? (model.jours[(suiv.getDay() || 7) - 1] + " " + fmtLong(suiv) +
-                    (c1 ? " · " + model.creneaux[c1.i][0] + " " + c1.c.m : "")) : "";
+    if (!c1) {
+      M.det = "Reprise " + nomJour.toLowerCase() + " " + fmtLong(suiv);
+      return M;
+    }
+    M.det = "Reprise " + (demain ? "demain, " : "") + nomJour.toLowerCase() + " " + fmtLong(suiv) +
+            " à " + model.creneaux[c1.i][0];
+    M.suite = '<span class="lab">' + (demain ? "demain" : nomJour.toLowerCase()) + '</span>' +
+              '<div class="titre">' + esc(c1.c.m) + "</div>" +
+              '<div class="det">' + esc(model.creneaux[c1.i][0] +
+              (c1.c.p || c1.c.s ? " · " + [c1.c.p, c1.c.s].filter(Boolean).join(" · ") : "")) + "</div>";
+    M.cibleTs = tsDe(suiv, minutes(model.creneaux[c1.i][0]));
+    M.legende = "avant le premier cours";
     return M;
   }
 
@@ -1040,23 +1096,24 @@ body.edit .addbtn{display:inline-block}
       '<div class="bloc"><span class="lab">' + M.lab + '</span><div class="titre">' + esc(M.titre) + "</div>" +
       (M.det ? '<div class="det">' + esc(M.det) + "</div>" : "") + "</div>" +
       (M.suite ? '<div class="bloc suite">' + M.suite + "</div>" : "") +
-      (M.finSec !== null ? '<div class="reste"><b id="momReste"></b><span>' + esc(M.legende) + "</span></div>" : "") +
-      (M.debutSec !== null ? '<div class="barre" id="momBarre"></div>' : "");
+      (M.cibleTs !== null ? '<div class="reste"><b id="momReste"></b><span>' + esc(M.legende) + "</span></div>" : "") +
+      (M.debutTs !== null ? '<div class="barre" id="momBarre"></div>' : "");
     phaseMoment = M.phase;
     majCompteur(M);
   }
 
   // Mise à jour à la seconde, sans reconstruire la page.
   function majCompteur(M) {
+    var maintenant = Date.now();
+    var restant = M.cibleTs !== null ? fmtDuree((M.cibleTs - maintenant) / 1000) : "";
     var r = document.getElementById("momReste");
-    if (r && M.finSec !== null) r.textContent = fmtDuree(M.finSec - etat.sec);
+    if (r && restant) r.textContent = restant;
     var pct = null;
-    if (M.debutSec !== null && M.finSec !== null && M.finSec > M.debutSec) {
-      pct = Math.max(0, Math.min(100, (etat.sec - M.debutSec) / (M.finSec - M.debutSec) * 100));
+    if (M.debutTs !== null && M.cibleTs !== null && M.cibleTs > M.debutTs) {
+      pct = Math.max(0, Math.min(100, (maintenant - M.debutTs) / (M.cibleTs - M.debutTs) * 100));
     }
     var b = document.getElementById("momBarre");
     if (b && pct !== null) b.style.width = pct.toFixed(2) + "%";
-    var restant = M.finSec !== null ? fmtDuree(M.finSec - etat.sec) : "";
     var marques = document.querySelectorAll(".maintenant");
     for (var i = 0; i < marques.length; i++) {
       marques[i].textContent = "en ce moment" + (restant && M.phase.indexOf("cours:") === 0 ? " · " + restant : "");
@@ -1339,7 +1396,12 @@ body.edit .addbtn{display:inline-block}
 
   /* ---------- commandes ---------- */
   function presse(id, oui) { document.getElementById(id).setAttribute("aria-pressed", String(oui)); }
-  function setGroupe(g) { groupe = g; presse("gA", g === "A"); presse("gB", g === "B"); render(); }
+  function setGroupe(g, memoriser) {
+    groupe = g;
+    presse("gA", g === "A"); presse("gB", g === "B");
+    if (memoriser !== false) { try { window.localStorage.setItem(KEY_GROUPE, g); } catch (e) {} }
+    render();
+  }
   function setView(v) {
     view = v;
     document.body.classList.toggle("view-grille", v === "grille");
@@ -1362,8 +1424,8 @@ body.edit .addbtn{display:inline-block}
   document.getElementById("prev").onclick = function () { setLundi(plusJours(lundi, -7)); };
   document.getElementById("next").onclick = function () { setLundi(plusJours(lundi, 7)); };
   document.getElementById("btnNow").onclick = function () {
-    var n = new Date(), js = n.getDay();
-    setLundi(js === 0 || js === 6 ? plusJours(n, js === 6 ? 2 : 1) : n);
+    calculerEtat();
+    setLundi(etat.cible.date);
     if (view === "jour") allerAuJour(true);
     else if (window.scrollTo) window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -1567,15 +1629,18 @@ body.edit .addbtn{display:inline-block}
       else if (mq.addListener) mq.addListener(appliquerTheme);
     }
 
-    var n = new Date(), js = n.getDay();
-    lundi = lundiDe(js === 0 || js === 6 ? plusJours(n, js === 6 ? 2 : 1) : n);
+    lundi = lundiDe(new Date());
+    calculerEtat();
+    lundi = lundiDe(etat.cible.date);
 
     ghRemplir();
     renderLegend();
     renderRecap();
     updateNotice();
     setView(view);
-    setGroupe("A");
+    var gSauve = null;
+    try { gSauve = window.localStorage.getItem(KEY_GROUPE); } catch (e) {}
+    setGroupe(gSauve === "B" ? "B" : "A", false);
     if (view === "jour") setTimeout(function () { allerAuJour(false); }, 60);
 
     battre();

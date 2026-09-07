@@ -37,6 +37,14 @@ indiquée dans les options.
 - **Affaires**, dans la barre : ce qu'il faut préparer pour le prochain jour de
   classe, matière par matière, avec le nombre d'affaires en pastille. La liste
   par matière se modifie depuis le même panneau.
+- Une fois le dernier cours passé, le bandeau annonce « journée terminée » et
+  la reprise : premier cours, heure, professeur, salle, avec un **décompte
+  jusqu'à ce premier cours** — en jours quand la reprise est lointaine. La vue
+  jour par jour bascule alors sur cette journée, marquée « prochaine journée »,
+  au besoin sur la semaine suivante. Les vacances et les jours fériés sont
+  sautés au passage.
+- Le **groupe choisi est mémorisé**, comme la semaine de référence : la page
+  rouvre sur le vôtre.
 - **Semaine entière / jour par jour**, **groupe A / B**, et un thème
   **auto / clair / sombre** — « auto » suit le réglage du téléphone ou de
   l'ordinateur et bascule en direct.
