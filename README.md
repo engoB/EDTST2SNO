@@ -43,6 +43,8 @@ indiquée dans les options.
   jour par jour bascule alors sur cette journée, marquée « prochaine journée »,
   au besoin sur la semaine suivante. Les vacances et les jours fériés sont
   sautés au passage.
+- En vue jour par jour, les **journées passées se replient** sur une seule
+  ligne, avec le nombre de cours ; un clic sur l'en-tête les rouvre.
 - Le **groupe choisi est mémorisé**, comme la semaine de référence : la page
   rouvre sur le vôtre.
 - **Semaine entière / jour par jour**, **groupe A / B**, et un thème
@@ -61,6 +63,13 @@ annulé, un cours remplacé (autre matière, autre salle) ou un cours ajouté. L
 grille de base n'est pas touchée : seule la date concernée change, et la case
 porte alors la mention « annulé », « remplacé » ou « ajouté ». Ces changements
 sont publiés avec le reste et se retirent d'un clic.
+
+## Vos corrections sont conservées
+
+Les modifications non publiées faites sur une version antérieure de la page sont
+reprises automatiquement : la page les relit, puis complète ce que l'ancienne
+version ne connaissait pas (calendrier des vacances, affaires par matière,
+changements ponctuels) à partir du fichier du dépôt. Rien n'est écrasé.
 
 ## Corriger
 

@@ -333,6 +333,23 @@ body.edit .vide .alt{display:none}
 .days{display:none}
 body.view-jour .days{display:block}
 .day{background:var(--card);border:1px solid var(--rule);border-radius:16px;box-shadow:var(--shadow);margin-bottom:11px;overflow:hidden}
+.dhead{
+  width:100%;display:flex;align-items:center;gap:10px;background:none;border:0;
+  font:inherit;color:inherit;padding:0;margin:0;cursor:pointer;text-align:left;
+}
+.dhead:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.dresume{
+  margin-left:auto;font-size:10px;font-weight:700;letter-spacing:.06em;
+  color:var(--ink-faint);white-space:nowrap;
+}
+.dchev{
+  flex:0 0 auto;width:6px;height:6px;border-right:1.6px solid var(--ink-faint);
+  border-bottom:1.6px solid var(--ink-faint);transform:rotate(45deg) translate(-1px,-1px);
+}
+.day:not(.plie) .dchev{transform:rotate(-135deg) translate(-2px,-2px)}
+.day.plie{background:var(--paper-2);box-shadow:none}
+.day.plie > h2{border-bottom:0;color:var(--ink-faint)}
+.day.plie .row,.day.plie .jour-off{display:none}
 .day > h2{
   margin:0;padding:11px 15px;font-size:11px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;
   color:var(--ink-soft);border-bottom:1px solid var(--rule);
@@ -644,6 +661,7 @@ body.edit .addbtn{display:inline-block}
   var theme = "auto";
   var editing = false, dirty = false;
   var etat = null, cleEtat = "", phaseMoment = "", texteData = null;
+  var deplies = {};   // journées passées rouvertes à la main
 
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
   function esc(s) {
@@ -794,11 +812,27 @@ body.edit .addbtn{display:inline-block}
   function semaineAffichee() { return lundi && iso(lundi) === iso(lundiDe(new Date())); }
 
   /* ---------- stockage ---------- */
+  // Reprend les modifications locales, y compris celles d'une version antérieure,
+  // et complète avec le fichier ce que l'ancienne version ne connaissait pas.
   function load() {
+    var raw = null;
     try {
-      var raw = window.localStorage.getItem(KEY);
-      if (raw) { model = JSON.parse(raw); dirty = true; }
+      raw = window.localStorage.getItem(KEY) ||
+            window.localStorage.getItem("edt-1st2s1-v2") ||
+            window.localStorage.getItem("edt-1st2s1-v1");
     } catch (e) {}
+    if (!raw) return;
+    var m;
+    try { m = JSON.parse(raw); } catch (e) { return; }
+    if (!m || !m.semaines) return;
+    ["meta", "creneaux", "jours", "pause", "calendrier", "recap"].forEach(function (k) {
+      if (!m[k] && SOURCE[k]) m[k] = clone(SOURCE[k]);
+    });
+    if (!m.affaires) m.affaires = SOURCE.affaires ? clone(SOURCE.affaires) : {};
+    if (!m.exceptions) m.exceptions = {};
+    model = m;
+    dirty = true;
+    try { window.localStorage.setItem(KEY, JSON.stringify(model)); } catch (e) {}
   }
   function persist() {
     dirty = true;
@@ -910,10 +944,23 @@ body.edit .addbtn{display:inline-block}
       var date = dateDuJour(k), off = jourOff(date);
       var estAuj = etat && etat.jour === j && semaineAffichee();
       var cible = etat && etat.cible.tag && iso(date) === iso(etat.cible.date);
-      h += '<section class="day' + (cible ? " cible" : "") + (off ? " off" : "") + '" data-jour="' + esc(j) + '">' +
-           "<h2>" + esc(j) + " " + esc(fmtLong(date)) +
-           (cible ? '<span class="badge' + (etat.cible.auj ? "" : " pale") + '">' + esc(etat.cible.tag) + "</span>" : "") +
-           (estAuj && !cible ? '<span class="badge pale">aujourd’hui</span>' : "") + "</h2>";
+      var dISO = iso(date);
+      var passe = etat && dISO < iso(etat.cible.date);
+      var plie = passe && !deplies[dISO];
+      var titreJour = esc(j) + " " + esc(fmtLong(date)) +
+        (cible ? '<span class="badge' + (etat.cible.auj ? "" : " pale") + '">' + esc(etat.cible.tag) + "</span>" : "") +
+        (estAuj && !cible ? '<span class="badge pale">aujourd’hui</span>' : "");
+      h += '<section class="day' + (cible ? " cible" : "") + (off ? " off" : "") + (plie ? " plie" : "") +
+           '" data-jour="' + esc(j) + '" data-date="' + dISO + '">';
+      if (passe) {
+        var n = off ? 0 : coursDuJour(date).length;
+        h += '<h2><button type="button" class="dhead" data-plier="' + dISO + '" aria-expanded="' + (!plie) + '">' +
+             "<span>" + titreJour + "</span>" +
+             '<span class="dresume">' + (off ? esc(off.nom) : (n ? n + (n > 1 ? " cours" : " cours") : "aucun cours")) + "</span>" +
+             '<span class="dchev" aria-hidden="true"></span></button></h2>';
+      } else {
+        h += "<h2>" + titreJour + "</h2>";
+      }
       if (off) {
         h += '<p class="jour-off">' + esc(off.nom) + "</p></section>";
         return;
@@ -1345,6 +1392,15 @@ body.edit .addbtn{display:inline-block}
   });
   document.addEventListener("click", function (e) {
     if (!e.target || !e.target.closest) return;
+    var pli = e.target.closest("[data-plier]");
+    if (pli) {
+      var d = pli.dataset.plier;
+      deplies[d] = !deplies[d];
+      var sec = pli.closest(".day");
+      sec.classList.toggle("plie", !deplies[d]);
+      pli.setAttribute("aria-expanded", String(!!deplies[d]));
+      return;
+    }
     var sup = e.target.closest("[data-exc-del]");
     if (sup) {
       var p = sup.dataset.excDel.split("|");
